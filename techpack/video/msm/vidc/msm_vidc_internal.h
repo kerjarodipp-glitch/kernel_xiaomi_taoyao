@@ -508,7 +508,6 @@ struct msm_vidc_core {
 	unsigned long min_freq;
 	unsigned long curr_freq;
 	struct msm_vidc_core_ops *core_ops;
-	bool pm_suspended;
 };
 
 struct msm_vidc_inst;

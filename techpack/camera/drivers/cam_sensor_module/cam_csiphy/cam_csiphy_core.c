@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2017-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2023-2024 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/module.h>
@@ -153,12 +152,6 @@ static void cam_csiphy_prgm_cmn_data(
 	for (csiphy_idx = 0; csiphy_idx < MAX_CSIPHY; csiphy_idx++) {
 		csiphybase = g_phy_data[csiphy_idx].base_address;
 		is_3phase = g_phy_data[csiphy_idx].is_3phase;
-
-		if (!csiphybase) {
-			CAM_DBG(CAM_CSIPHY, "CSIPHY: %d is not available in platform",
-				csiphy_idx);
-			continue;
-		}
 
 		for (i = 0; i < size; i++) {
 			csiphy_common_reg =
@@ -394,21 +387,9 @@ int32_t cam_cmd_buf_parser(struct csiphy_device *csiphy_dev,
 		return rc;
 	}
 
-	if (csl_packet->num_cmd_buf)
-		cmd_desc = (struct cam_cmd_buf_desc *)
-			((uint32_t *)&csl_packet->payload +
-			csl_packet->cmd_buf_offset / 4);
-	else {
-		CAM_ERR(CAM_CSIPHY, "num_cmd_buffers = %d", csl_packet->num_cmd_buf);
-		rc = -EINVAL;
-		return rc;
-	}
-
-	rc = cam_packet_util_validate_cmd_desc(cmd_desc);
-	if (rc) {
-		CAM_ERR(CAM_CSIPHY, "Invalid cmd desc ret: %d", rc);
-		return rc;
-	}
+	cmd_desc = (struct cam_cmd_buf_desc *)
+		((uint32_t *)&csl_packet->payload +
+		csl_packet->cmd_buf_offset / 4);
 
 	rc = cam_mem_get_cpu_buf(cmd_desc->mem_handle,
 		&generic_ptr, &len);
@@ -433,7 +414,6 @@ int32_t cam_cmd_buf_parser(struct csiphy_device *csiphy_dev,
 	index = cam_csiphy_get_instance_offset(csiphy_dev, cfg_dev->dev_handle);
 	if (index < 0 || index  >= csiphy_dev->session_max_device_support) {
 		CAM_ERR(CAM_CSIPHY, "index in invalid: %d", index);
-		cam_mem_put_cpu_buf(cmd_desc->mem_handle);
 		return -EINVAL;
 	}
 
@@ -443,7 +423,6 @@ int32_t cam_cmd_buf_parser(struct csiphy_device *csiphy_dev,
 		CAM_ERR(CAM_CSIPHY,
 			"Wrong configuration lane_cnt: %u",
 			cam_cmd_csiphy_info->lane_cnt);
-		cam_mem_put_cpu_buf(cmd_desc->mem_handle);
 		return rc;
 	}
 
@@ -504,14 +483,11 @@ int32_t cam_cmd_buf_parser(struct csiphy_device *csiphy_dev,
 		csiphy_dev->csiphy_info[index].settle_time,
 		csiphy_dev->csiphy_info[index].data_rate);
 
-	cam_mem_put_cpu_buf(cmd_desc->mem_handle);
-	cam_mem_put_cpu_buf(cfg_dev->packet_handle);
 	return rc;
 
 reset_settings:
 	cam_csiphy_reset_phyconfig_param(csiphy_dev, index);
-	cam_mem_put_cpu_buf(cfg_dev->packet_handle);
-	cam_mem_put_cpu_buf(cmd_desc->mem_handle);
+
 	return rc;
 }
 
@@ -978,7 +954,8 @@ void cam_csiphy_shutdown(struct csiphy_device *csiphy_dev)
 		cam_csiphy_reset(csiphy_dev);
 		cam_soc_util_disable_platform_resource(soc_info, true, true);
 
-		cam_cpas_stop(csiphy_dev->cpas_handle);
+		//deleted by xiaomi
+		//cam_cpas_stop(csiphy_dev->cpas_handle);
 		csiphy_dev->csiphy_state = CAM_CSIPHY_ACQUIRE;
 	}
 
@@ -994,6 +971,8 @@ void cam_csiphy_shutdown(struct csiphy_device *csiphy_dev)
 		}
 	}
 
+	// xiaomi: force stop cpas
+	cam_cpas_stop(csiphy_dev->cpas_handle);
 	csiphy_dev->ref_count = 0;
 	csiphy_dev->acquire_count = 0;
 	csiphy_dev->start_dev_count = 0;
@@ -1200,12 +1179,6 @@ int32_t cam_csiphy_core_cfg(void *phy_dev,
 		index = csiphy_dev->acquire_count;
 		csiphy_acq_dev.device_handle =
 			cam_create_device_hdl(&bridge_params);
-		if (csiphy_acq_dev.device_handle <= 0) {
-			rc = -EFAULT;
-			CAM_ERR(CAM_CSIPHY, "Can not create device handle");
-			goto release_mutex;
-		}
-
 		csiphy_dev->csiphy_info[index].hdl_data.device_hdl =
 			csiphy_acq_dev.device_handle;
 		csiphy_dev->csiphy_info[index].hdl_data.session_hdl =

@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2015-2020, The Linux Foundation. All rights reserved.
- * Copyright (c) 2024 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/of.h>
@@ -1137,8 +1136,6 @@ int gsi_register_device(struct gsi_per_props *props, unsigned long *dev_hdl)
 		return -GSI_STATUS_UNSUPPORTED_OP;
 	}
 
-	gsi_unmap_base();
-
 	switch (props->ver) {
 	case GSI_VER_1_0:
 	case GSI_VER_1_2:
@@ -1484,7 +1481,9 @@ int gsi_deregister_device(unsigned long dev_hdl, bool force)
 	__gsi_config_gen_irq(gsi_ctx->per.ee, ~0, 0);
 
 	devm_free_irq(gsi_ctx->dev, gsi_ctx->per.irq, gsi_ctx);
-	gsi_ctx->per_registered = false;
+	gsi_unmap_base();
+	memset(gsi_ctx, 0, sizeof(*gsi_ctx));
+
 	return GSI_STATUS_SUCCESS;
 }
 EXPORT_SYMBOL(gsi_deregister_device);
@@ -1753,14 +1752,7 @@ static inline uint64_t gsi_read_event_ring_rp_ddr(struct gsi_evt_ring_props* pro
 static inline uint64_t gsi_read_event_ring_rp_reg(struct gsi_evt_ring_props* props,
 	uint8_t id, int ee)
 {
-	uint64_t rp;
-
-	rp = gsi_readl(gsi_ctx->base +
-		GSI_EE_n_EV_CH_k_CNTXT_4_OFFS(id, ee));
-	rp |= ((uint64_t)gsi_readl(gsi_ctx->base +
-		GSI_EE_n_EV_CH_k_CNTXT_5_OFFS(id, ee))) << 32;
-
-	return rp;
+	return gsi_readl(gsi_ctx->base + GSI_EE_n_EV_CH_k_CNTXT_4_OFFS(id, ee));
 }
 
 int gsi_alloc_evt_ring(struct gsi_evt_ring_props *props, unsigned long dev_hdl,
@@ -2814,28 +2806,6 @@ int gsi_write_wdi3_channel_scratch_6_7_reg(unsigned long chan_hdl,
 	return GSI_STATUS_SUCCESS;
 }
 EXPORT_SYMBOL(gsi_write_wdi3_channel_scratch_6_7_reg);
-
-/**
- * gsi_status_enabled() - Query GSI Status
- *
- * Returns:	true if ENABLED, false on DISABLED
- *
- */
-bool gsi_status_enabled(void)
-{
-	uint32_t val;
-	bool ret = false;
-
-	if (!gsi_ctx->base)
-		return ret;
-
-	val = gsi_readl(gsi_ctx->base +
-			GSI_EE_n_GSI_STATUS_OFFS(gsi_ctx->per.ee));
-	if (val & GSI_EE_n_GSI_STATUS_ENABLED_BMSK)
-		ret = true;
-	return ret;
-}
-EXPORT_SYMBOL(gsi_status_enabled);
 
 static void __gsi_read_channel_scratch(unsigned long chan_hdl,
 		union __packed gsi_channel_scratch * val)
@@ -4081,7 +4051,7 @@ int gsi_poll_n_channel(unsigned long chan_hdl,
 		/* update rp to see of we have anything new to process */
 		rp = ctx->evtr->props.gsi_read_event_ring_rp(
 			&ctx->evtr->props, ctx->evtr->id, ee);
-		rp |= ctx->evtr->ring.rp & 0xFFFFFFFF00000000ULL;
+		rp |= ctx->ring.rp & 0xFFFFFFFF00000000ULL;
 
 		ctx->evtr->ring.rp = rp;
 		/* read gsi event ring rp again if last read is empty */
@@ -4093,7 +4063,7 @@ int gsi_poll_n_channel(unsigned long chan_hdl,
 			__iowmb();
 			rp = ctx->evtr->props.gsi_read_event_ring_rp(
 				&ctx->evtr->props, ctx->evtr->id, ee);
-			rp |= ctx->evtr->ring.rp & 0xFFFFFFFF00000000ULL;
+			rp |= ctx->ring.rp & 0xFFFFFFFF00000000ULL;
 			ctx->evtr->ring.rp = rp;
 			if (rp == ctx->evtr->ring.rp_local) {
 				spin_unlock_irqrestore(
