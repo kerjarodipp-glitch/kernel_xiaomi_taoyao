@@ -127,4 +127,12 @@ source "drivers/staging/mi-reclaim/Kconfig"
 
 source "drivers/staging/cam-reclaim/Kconfig"
 
+source "drivers/staging/qcacld-3.0/Kconfig"
+
+source "drivers/staging/datarmnet-ext/offload/Kconfig"
+
+source "drivers/staging/datarmnet-ext/shs/Kconfig"
+
+source "drivers/staging/datarmnet/core/Kconfig"
+
 endif # STAGING
