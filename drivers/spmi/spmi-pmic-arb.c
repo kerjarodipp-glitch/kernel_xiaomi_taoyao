@@ -19,6 +19,8 @@
 #include <linux/spmi.h>
 #include <linux/string.h>
 #include <linux/soc/qcom/spmi-pmic-arb.h>
+#include <linux/wakeup_reason.h>
+#include <linux/syscore_ops.h>
 
 /* PMIC Arbiter configuration registers */
 #define PMIC_ARB_VERSION		0x0000

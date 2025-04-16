@@ -2,6 +2,9 @@
 /*
  * Copyright (c) 2012-2021, The Linux Foundation. All rights reserved.
  */
+#ifdef CONFIG_FACTORY_BUILD
+#define DEBUG
+#endif
 
 #include <linux/module.h>
 #include <linux/kernel.h>
@@ -167,6 +170,11 @@
 
 /* BAM pipe mask */
 #define MSM_PIPE_ID_MASK	(0x1F)
+
+#undef dev_dbg
+#undef pr_debug
+#define pr_debug pr_err
+#define dev_dbg dev_err
 
 enum dbm_reg {
 	DBM_EP_CFG,
@@ -2624,6 +2632,12 @@ static void dwc3_msm_notify_event(struct dwc3 *dwc,
 				GSI_EN_MASK, 0);
 		}
 		break;
+#ifndef CONFIG_FACTORY_BUILD
+	case DWC3_USB_RESTART_EVENT:
+		dev_dbg(mdwc->dev, "DWC3_USB_RESTART_EVENT\n");
+		schedule_work(&mdwc->restart_usb_work);
+		break;
+#endif
 	default:
 		dev_dbg(mdwc->dev, "unknown dwc3 event\n");
 		break;
@@ -5691,6 +5705,9 @@ static int dwc3_msm_gadget_vbus_draw(struct dwc3_msm *mdwc, unsigned int mA)
 		return 0;
 
 	if (mdwc->apsd_source == IIO && chg_type != POWER_SUPPLY_TYPE_USB)
+		return 0;
+
+	if (mA < 100)
 		return 0;
 
 	/* Set max current limit in uA */

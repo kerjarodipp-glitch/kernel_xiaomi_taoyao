@@ -478,6 +478,9 @@ static vm_fault_t kgsl_paged_vmfault(struct kgsl_memdesc *memdesc,
 
 	pgoff = offset >> PAGE_SHIFT;
 
+	if( !memdesc->pages)
+		return VM_FAULT_NOPAGE;
+
 	return vmf_insert_page(vma, vmf->address, memdesc->pages[pgoff]);
 }
 

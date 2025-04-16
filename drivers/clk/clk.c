@@ -107,6 +107,8 @@ struct clk {
 	struct hlist_node clks_node;
 };
 
+extern int in_panic;
+
 /***           runtime pm          ***/
 static int clk_pm_runtime_get(struct clk_core *core)
 {

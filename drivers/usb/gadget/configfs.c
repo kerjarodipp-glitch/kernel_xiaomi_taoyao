@@ -36,6 +36,11 @@ struct device *create_function_device(char *name)
 EXPORT_SYMBOL_GPL(create_function_device);
 #endif
 
+#undef dev_dbg
+#undef pr_debug
+#define pr_debug pr_err
+#define dev_dbg dev_err
+
 int check_user_usb_string(const char *name,
 		struct usb_gadget_strings *stringtab_dev)
 {

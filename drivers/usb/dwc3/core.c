@@ -8,6 +8,10 @@
  *	    Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  */
 
+#ifdef CONFIG_FACTORY_BUILD
+#define DEBUG
+#endif
+
 #include <linux/clk.h>
 #include <linux/version.h>
 #include <linux/module.h>
@@ -1675,6 +1679,9 @@ static int dwc3_probe(struct platform_device *pdev)
 	}
 
 	INIT_WORK(&dwc->bh_work, dwc3_bh_work);
+#ifndef CONFIG_FACTORY_BUILD
+	INIT_WORK(&dwc->check_cmd_work, dwc3_check_cmd_work);
+#endif
 	dwc->regs	= regs;
 	dwc->regs_size	= resource_size(&dwc_res);
 
