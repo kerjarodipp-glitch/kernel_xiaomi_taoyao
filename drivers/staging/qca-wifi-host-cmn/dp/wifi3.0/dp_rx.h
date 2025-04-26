@@ -1,6 +1,5 @@
 /*
  * Copyright (c) 2016-2020 The Linux Foundation. All rights reserved.
- * Copyright (c) 2024 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -210,9 +209,7 @@ bool dp_rx_is_special_frame(qdf_nbuf_t nbuf, uint32_t frame_mask)
 	    ((frame_mask & FRAME_MASK_IPV4_EAPOL) &&
 	     qdf_nbuf_is_ipv4_eapol_pkt(nbuf)) ||
 	    ((frame_mask & FRAME_MASK_IPV6_DHCP) &&
-	     qdf_nbuf_is_ipv6_dhcp_pkt(nbuf)) ||
-	    ((frame_mask & FRAME_MASK_IPV4_WAPI) &&
-	     qdf_nbuf_is_ipv4_wapi_pkt(nbuf)))
+	     qdf_nbuf_is_ipv6_dhcp_pkt(nbuf)))
 		return true;
 
 	return false;
@@ -679,7 +676,6 @@ dp_rx_wbm_err_process(struct dp_intr *int_ctx, struct dp_soc *soc,
 /**
  * dp_rx_sg_create() - create a frag_list for MSDUs which are spread across
  *		     multiple nbufs.
- * @soc: core txrx main context
  * @nbuf: pointer to the first msdu of an amsdu.
  *
  * This function implements the creation of RX frag_list for cases
@@ -687,7 +683,7 @@ dp_rx_wbm_err_process(struct dp_intr *int_ctx, struct dp_soc *soc,
  *
  * Return: returns the head nbuf which contains complete frag_list.
  */
-qdf_nbuf_t dp_rx_sg_create(struct dp_soc *soc, qdf_nbuf_t nbuf);
+qdf_nbuf_t dp_rx_sg_create(qdf_nbuf_t nbuf);
 
 
 /*

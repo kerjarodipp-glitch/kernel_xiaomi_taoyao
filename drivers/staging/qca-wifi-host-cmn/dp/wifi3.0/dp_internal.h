@@ -1,6 +1,5 @@
 /*
  * Copyright (c) 2016-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2024 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -391,7 +390,6 @@ while (0)
 #define FRAME_MASK_IPV4_DHCP  2
 #define FRAME_MASK_IPV4_EAPOL 4
 #define FRAME_MASK_IPV6_DHCP  8
-#define FRAME_MASK_IPV4_WAPI  0x40
 
 #ifdef QCA_SUPPORT_PEER_ISOLATION
 #define dp_get_peer_isolation(_peer) ((_peer)->isolation)
@@ -855,7 +853,6 @@ static inline void dp_update_vdev_stats(struct dp_soc *soc,
 	tgtobj->tx.ldpc += srcobj->stats.tx.ldpc;
 	tgtobj->tx.pream_punct_cnt += srcobj->stats.tx.pream_punct_cnt;
 	tgtobj->tx.retries += srcobj->stats.tx.retries;
-	tgtobj->tx.retries_mpdu += srcobj->stats.tx.retries_mpdu;
 	tgtobj->tx.non_amsdu_cnt += srcobj->stats.tx.non_amsdu_cnt;
 	tgtobj->tx.amsdu_cnt += srcobj->stats.tx.amsdu_cnt;
 	tgtobj->tx.non_ampdu_cnt += srcobj->stats.tx.non_ampdu_cnt;
@@ -874,8 +871,6 @@ static inline void dp_update_vdev_stats(struct dp_soc *soc,
 	tgtobj->tx.dropped.fw_reason3 +=
 			srcobj->stats.tx.dropped.fw_reason3;
 	tgtobj->tx.dropped.age_out += srcobj->stats.tx.dropped.age_out;
-	tgtobj->tx.mpdu_success_with_retries +=
-			srcobj->stats.tx.mpdu_success_with_retries;
 	tgtobj->rx.err.mic_err += srcobj->stats.rx.err.mic_err;
 	if (srcobj->stats.rx.rssi != 0)
 		tgtobj->rx.rssi = srcobj->stats.rx.rssi;
@@ -1842,20 +1837,8 @@ void dp_peer_stats_update_protocol_cnt(struct cdp_soc_t *soc,
 
 #ifdef QCA_LL_TX_FLOW_CONTROL_V2
 void dp_tx_dump_flow_pool_info(struct cdp_soc_t *soc_hdl);
-
-/**
- * dp_tx_dump_flow_pool_info_compact() - dump flow pool info
- * @soc: DP soc context
- *
- * Return: none
- */
-void dp_tx_dump_flow_pool_info_compact(struct dp_soc *soc);
 int dp_tx_delete_flow_pool(struct dp_soc *soc, struct dp_tx_desc_pool_s *pool,
 	bool force);
-#else
-static inline void dp_tx_dump_flow_pool_info_compact(struct dp_soc *soc)
-{
-}
 #endif /* QCA_LL_TX_FLOW_CONTROL_V2 */
 
 #ifdef QCA_OL_DP_SRNG_LOCK_LESS_ACCESS
