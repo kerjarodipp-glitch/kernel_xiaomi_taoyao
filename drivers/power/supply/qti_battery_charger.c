@@ -793,9 +793,8 @@ static int write_property_id(struct battery_chg_dev *bcdev,
 	req_msg.hdr.type = MSG_TYPE_REQ_RESP;
 	req_msg.hdr.opcode = pst->opcode_set;
 
-	if (pst->psy)
-		pr_debug("psy: %s prop_id: %u val: %u\n", pst->psy->desc->name,
-			req_msg.property_id, val);
+	pr_debug("psy: %s prop_id: %u val: %u\n", pst->psy->desc->name,
+		req_msg.property_id, val);
 
 	return battery_chg_write(bcdev, &req_msg, sizeof(req_msg));
 }
@@ -812,9 +811,8 @@ static int read_property_id(struct battery_chg_dev *bcdev,
 	req_msg.hdr.type = MSG_TYPE_REQ_RESP;
 	req_msg.hdr.opcode = pst->opcode_get;
 
-	if (pst->psy)
-		pr_debug("psy: %s prop_id: %u\n", pst->psy->desc->name,
-			req_msg.property_id);
+	pr_debug("psy: %s prop_id: %u\n", pst->psy->desc->name,
+		req_msg.property_id);
 
 	return battery_chg_write(bcdev, &req_msg, sizeof(req_msg));
 }
@@ -828,9 +826,8 @@ static int get_property_id(struct psy_state *pst,
 		if (pst->map[i] == prop)
 			return i;
 
-	if (pst->psy)
-		pr_err("No property id for property %d in psy %s\n", prop,
-			pst->psy->desc->name);
+	pr_err("No property id for property %d in psy %s\n", prop,
+		pst->psy->desc->name);
 
 	return -ENOENT;
 }
@@ -5575,7 +5572,7 @@ static int battery_chg_probe(struct platform_device *pdev)
 	int rc, i;
 
 	dev_err(dev, "battery_chg_probe start\n");
-  	msleep(50);
+	msleep(50);
 	bcdev = devm_kzalloc(&pdev->dev, sizeof(*bcdev), GFP_KERNEL);
 	if (!bcdev)
 		return -ENOMEM;

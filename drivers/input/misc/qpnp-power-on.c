@@ -2669,9 +2669,6 @@ static int qpnp_pon_probe(struct platform_device *pdev)
 			return rc;
 	}
 
-	pon->kpdpwr_dbc_enable = of_property_read_bool(dev->of_node,
-						"qcom,kpdpwr-sw-debounce");
-
 	pon->store_hard_reset_reason = of_property_read_bool(dev->of_node,
 					"qcom,store-hard-reset-reason");
 

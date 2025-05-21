@@ -1590,10 +1590,11 @@ int __lock_page_or_retry(struct page *page, struct mm_struct *mm,
 			return 0;
 
 		up_read(&mm->mmap_sem);
-		if (flags & FAULT_FLAG_KILLABLE)
+		if (flags & FAULT_FLAG_KILLABLE) {
 			wait_on_page_locked_killable(page);
-		else
+		} else {
 			wait_on_page_locked(page);
+		}
 		return 0;
 	} else {
 		if (flags & FAULT_FLAG_KILLABLE) {

@@ -2117,7 +2117,7 @@ static int haptics_load_constant_effect(struct haptics_chip *chip, u8 amplitude)
 		goto unlock;
 
 	/* Always enable LRA auto resonance for DIRECT_PLAY */
-	rc = haptics_enable_autores(chip, !chip->config.is_erm);
+	rc = haptics_enable_autores(chip, 0);
 	if (rc < 0)
 		goto unlock;
 
@@ -2209,7 +2209,7 @@ static int haptics_init_custom_effect(struct haptics_chip *chip)
 	chip->custom_effect->brake = NULL;
 	chip->custom_effect->id = UINT_MAX;
 #ifdef QCOM_HAPTIC_BOB
-	chip->custom_effect->vmax_mv = chip->config.vmax_mv;
+	chip->custom_effect->vmax_mv = chip->config.vmax_mv;//MIUI modif
 #elif defined(CONFIG_TARGET_PRODUCT_HAYDN)
 	chip->custom_effect->vmax_mv = 8500;
 #else
