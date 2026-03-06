@@ -1,35 +1,30 @@
-name: Add ReSukiSU Submodule
+name: Fix KernelSU
 
 on:
   workflow_dispatch:
 
 jobs:
-  add-resukisu:
+  fix-ksu:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repo
+      - name: Checkout
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Setup Git
+      - name: Setup git
         run: |
           git config --global user.name "github-actions"
           git config --global user.email "github-actions@github.com"
 
-      - name: Remove old folder if exists
+      - name: Remove KernelSU-Next
         run: |
           rm -rf KernelSU-Next
           rm -rf .git/modules/KernelSU-Next
 
-      - name: Add ReSukiSU Submodule
+      - name: Commit cleanup
         run: |
-          git submodule add https://github.com/ReSukiSU/ReSukiSU ReSukiSU
-
-      - name: Commit changes
-        run: |
-          git add .gitmodules ReSukiSU
-          git commit -m "Add ReSukiSU submodule"
+          git add .
+          git commit -m "Remove KernelSU-Next (using ReSukiSU instead)"
           git push
