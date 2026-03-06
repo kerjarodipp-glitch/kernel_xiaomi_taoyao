@@ -1,4 +1,4 @@
-name: Build Kernel (4.9 - crDroid)
+name: Build Kernel (5.4 - Taoyao)
 
 on:
   workflow_dispatch:
@@ -14,19 +14,20 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+
     env:
       CCACHE_COMPILERCHECK: "%compiler% -dumpmachine; %compiler% -dumpversion"
       CCACHE_NOHASHDIR: "true"
       CCACHE_MAXSIZE: "2G"
       CCACHE_HARDLINK: "true"
       KERNEL_DEFCONFIG: "vendor/taoyao-qgki_defconfig"
-      KERNEL_CMDLINE: "ARCH=arm64 CC=clang CLANG_TRIPLE=aarch64-linux-gnu- CROSS_COMPILE=aarch64-linux-gnu- CROSS_COMPILE_ARM32=arm-linux-gnueabi- O=out"
+      KERNEL_CMDLINE: "ARCH=arm64 CLANG_TRIPLE=aarch64-linux-gnu- CROSS_COMPILE=aarch64-linux-gnu- CROSS_COMPILE_ARM32=arm-linux-gnueabi- O=out"
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          submodules: "true"
+          submodules: true
           fetch-depth: 100
 
       - name: Set up ccache
@@ -36,53 +37,56 @@ jobs:
         run: |
           sudo apt-get update -y
 
-          # Toolchain & build deps
           sudo apt install -y \
             gcc-aarch64-linux-gnu gcc-arm-linux-gnueabi \
             aria2 binutils make python3 libssl-dev build-essential \
             bc bison flex unzip ca-certificates xz-utils \
             mkbootimg cpio device-tree-compiler git git-lfs curl wget
-            
-          # Toolchain (crDroid clang-r547379)
+
+          # Clone clang
           git clone --depth=1 \
             https://gitlab.com/crdroidandroid/android_prebuilts_clang_host_linux-x86_clang-r547379.git \
             google-clang
 
-           curl -LSs "https://raw.githubusercontent.com/ReSukiSU/ReSukiSU/main/kernel/setup.sh" | bash
+          # Setup ReSukiSU
+          curl -LSs "https://raw.githubusercontent.com/ReSukiSU/ReSukiSU/main/kernel/setup.sh" | bash
 
       - name: GetTime
         id: get_time
         run: echo "TIME=$(TZ=UTC+3 date +%s)" >> "$GITHUB_OUTPUT"
 
-      - name: Build Kernel-With-KernelSU (with logging)
+      - name: Build Kernel (with logging)
         run: |
-          export PATH="$(pwd)/google-clang/bin/:$PATH"
+          export PATH="$(pwd)/google-clang/bin:$PATH"
           export LD=ld.lld
 
-          echo ">>> Starting defconfig build..."
+          echo ">>> Running defconfig"
           make $KERNEL_CMDLINE $KERNEL_DEFCONFIG CC="ccache clang" 2>&1 | tee build_defconfig.log
 
-          echo ">>> Starting kernel compilation (Image + dtbo.img)..."
-          make $KERNEL_CMDLINE CC="ccache clang" -j"$(nproc --all)" Image dtbo.img 2>&1 | tee build_kernel.log
+          echo ">>> Building kernel"
+          make $KERNEL_CMDLINE CC="ccache clang" -j$(nproc) Image dtbs 2>&1 | tee build_kernel.log
 
           BUILD_RESULT=${PIPESTATUS[0]}
           if [ "$BUILD_RESULT" -ne 0 ]; then
-            echo "❌ Kernel build failed. Logs will be uploaded."
+            echo "❌ Kernel build failed"
             exit 1
           fi
 
       - name: Run Kernel Patcher
         run: |
           cd out/arch/arm64/boot/
+
           echo "Downloading patcher..."
           wget -q https://github.com/SukiSU-Ultra/SukiSU_KernelPatch_patch/releases/download/0.13.0/patch_linux
+
           chmod +x patch_linux
 
           echo "Patching kernel image..."
-          ./patch_linux || { echo "Error: Patching failed!" >&2; exit 1; }
+          ./patch_linux || { echo "Patch failed"; exit 1; }
 
           rm -f Image
           mv oImage Image
+
           cd -
 
       - name: Upload Build Logs
@@ -93,14 +97,14 @@ jobs:
           path: |
             build_defconfig.log
             build_kernel.log
-            patch.log
             out/arch/arm64/boot/.config
 
-      - name: Upload Raw Outputs
+      - name: Upload Kernel Output
         if: success()
         uses: actions/upload-artifact@v4
         with:
-          name: Raw_Kernel-${{ steps.get_time.outputs.TIME }}
+          name: Kernel_Output-${{ steps.get_time.outputs.TIME }}
           path: |
-            out/arch/arm64/boot/Image
-            out/arch/arm64/boot/dtbo.img
+            out/arch/arm64/boot/Image*
+            out/arch/arm64/boot/dtbo.img*
+            out/arch/arm64/boot/dts/**/*.dtb
