@@ -1,0 +1,45 @@
+name: Apply Kernel Patches
+
+on:
+  workflow_dispatch:
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Kernel
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Git
+        run: |
+          git config --global user.name "github-actions"
+          git config --global user.email "github-actions@github.com"
+
+      - name: Clone Patch Repo
+        run: |
+          git clone https://github.com/JackA1ltman/NonGKI_Kernel_Build_2nd patches
+
+      - name: Give permission
+        run: |
+          chmod +x patches/Patches/*.sh
+
+      - name: Run Backport Patches
+        run: |
+          bash patches/Patches/backport_patches.sh
+
+      - name: Run SELinux Patches
+        run: |
+          bash patches/Patches/backport_selinux_patches.sh
+
+      - name: Run SUSFS Hook Patches
+        run: |
+          bash patches/Patches/susfs_inline_hook_patches.sh
+
+      - name: Commit Changes
+        run: |
+          git add .
+          git commit -m "Apply NonGKI SUSFS patches"
+          git push
