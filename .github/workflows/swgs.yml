@@ -1,4 +1,4 @@
-name: Build Kernel (5.4 - Taoyao)
+name: Build Kernel (4.9 - crDroid)
 
 on:
   workflow_dispatch:
@@ -14,127 +14,108 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-
     env:
       CCACHE_COMPILERCHECK: "%compiler% -dumpmachine; %compiler% -dumpversion"
       CCACHE_NOHASHDIR: "true"
       CCACHE_MAXSIZE: "2G"
       CCACHE_HARDLINK: "true"
-
       KERNEL_DEFCONFIG: "vendor/taoyao-qgki_defconfig"
       KERNEL_CMDLINE: "ARCH=arm64 CC=clang CLANG_TRIPLE=aarch64-linux-gnu- CROSS_COMPILE=aarch64-linux-gnu- CROSS_COMPILE_ARM32=arm-linux-gnueabi- O=out"
-
-      TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-      TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          submodules: true
+          submodules: "true"
           fetch-depth: 100
 
       - name: Set up ccache
         uses: hendrikmuhs/ccache-action@v1.2
 
-      - name: Install dependencies
+      - name: Install dependencies & toolchain
         run: |
           sudo apt-get update -y
-          sudo apt install gcc-aarch64-linux-gnu gcc-arm-linux-gnueabi -y
-          sudo apt install aria2 binutils make python3 build-essential bc bison flex unzip \
-          libssl-dev ca-certificates xz-utils mkbootimg cpio device-tree-compiler \
-          git git-lfs curl wget jq gzip -y
 
-      - name: Download Google Clang
+          # Toolchain & build deps
+          sudo apt install -y \
+            gcc-aarch64-linux-gnu gcc-arm-linux-gnueabi \
+            aria2 binutils make python3 libssl-dev build-essential \
+            bc bison flex unzip ca-certificates xz-utils \
+            mkbootimg cpio device-tree-compiler git git-lfs curl wget
+
+          # python2 (dibutuhkan rule dtbo.img). Kalau paketnya tidak ada,
+          # buat symlink python2 -> python3
+          sudo apt-get install -y python2 || true
+          if ! command -v python2 >/dev/null 2>&1; then
+            echo "python2 package not available, creating symlink python2 -> python3"
+            sudo ln -sf /usr/bin/python3 /usr/bin/python2
+          fi
+
+          # Toolchain (crDroid clang-r547379)
+          git clone --depth=1 \
+            https://gitlab.com/crdroidandroid/android_prebuilts_clang_host_linux-x86_clang-r547379.git \
+            google-clang
+
+            curl -LSs "https://raw.githubusercontent.com/kylieeXD/SukiSU-Ultra/refs/heads/main/kernel/setup.sh" | bash -s tmp-builtin
+         
+          # Ganti mkdtboimg.py dengan versi Python3 dari AOSP (fix error str/bytes)
+          MKDTBO_PATH="scripts/dtc/libfdt/mkdtboimg.py"
+          echo ">>> Replacing mkdtboimg.py with Python3 version from AOSP"
+          curl -L "https://android.googlesource.com/platform/system/libufdt/+/refs/heads/main/utils/src/mkdtboimg.py?format=TEXT" \
+            | base64 --decode > "$MKDTBO_PATH"
+          chmod +x "$MKDTBO_PATH"
+
+      - name: GetTime
+        id: get_time
+        run: echo "TIME=$(TZ=UTC+3 date +%s)" >> "$GITHUB_OUTPUT"
+
+      - name: Build Kernel-With-KernelSU (with logging)
         run: |
-          wget -q https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/refs/heads/main/clang-r547379.tar.gz
-          mkdir -p google-clang
-          tar -xzf clang-r547379.tar.gz -C google-clang
-          rm clang-r547379.tar.gz
+          export PATH="$(pwd)/google-clang/bin/:$PATH"
+          export LD=ld.lld
 
-      - name: Get Build Information
-        id: build_info
+          echo ">>> Starting defconfig build..."
+          make $KERNEL_CMDLINE $KERNEL_DEFCONFIG CC="ccache clang" 2>&1 | tee build_defconfig.log
+
+          echo ">>> Starting kernel compilation (Image + dtbo.img)..."
+          make $KERNEL_CMDLINE CC="ccache clang" -j"$(nproc --all)" Image dtbo.img 2>&1 | tee build_kernel.log
+
+          BUILD_RESULT=${PIPESTATUS[0]}
+          if [ "$BUILD_RESULT" -ne 0 ]; then
+            echo "❌ Kernel build failed. Logs will be uploaded."
+            exit 1
+          fi
+
+      - name: Run Kernel Patcher
         run: |
-          KERNEL_VERSION=$(make kernelversion 2>/dev/null || echo "Unknown")
-          echo "kernel_version=${KERNEL_VERSION}" >> $GITHUB_OUTPUT
+          cd out/arch/arm64/boot/
+          echo "Downloading patcher..."
+          wget -q https://github.com/SukiSU-Ultra/SukiSU_KernelPatch_patch/releases/download/0.13.0/patch_linux
+          chmod +x patch_linux
 
-          export PATH=$(pwd)/google-clang/bin/:$PATH
-          CLANG_VERSION=$(clang --version | head -n1)
-          echo "clang_version=${CLANG_VERSION}" >> $GITHUB_OUTPUT
+          echo "Patching kernel image..."
+          ./patch_linux || { echo "Error: Patching failed!" >&2; exit 1; }
 
-          BRANCH_NAME=${GITHUB_REF##*/}
-          echo "branch=${BRANCH_NAME}" >> $GITHUB_OUTPUT
+          rm -f Image
+          mv oImage Image
+          cd -
 
-          COMMIT_SHA=$(git rev-parse --short HEAD)
-          echo "commit_sha=${COMMIT_SHA}" >> $GITHUB_OUTPUT
+      - name: Upload Build Logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: Build_Logs-${{ steps.get_time.outputs.TIME }}
+          path: |
+            build_defconfig.log
+            build_kernel.log
+            patch.log
+            out/arch/arm64/boot/.config
 
-          BUILD_START=$(date '+%Y-%m-%d %H:%M:%S UTC')
-          echo "build_start=${BUILD_START}" >> $GITHUB_OUTPUT
-          echo "build_start_ts=$(date +%s)" >> $GITHUB_OUTPUT
-
-      - name: Send Build Start Notification
-        run: |
-          curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
-          -d chat_id="${TELEGRAM_CHAT_ID}" \
-          -d parse_mode="HTML" \
-          -d text="🔨 <b>Kernel Build Started</b>
-
-          📱 <b>Device:</b> Taoyao (5.4)
-          🌿 <b>Branch:</b> <code>${{ steps.build_info.outputs.branch }}</code>
-          📝 <b>Commit:</b> <code>${{ steps.build_info.outputs.commit_sha }}</code>
-
-          🐧 <b>Linux:</b> ${{ steps.build_info.outputs.kernel_version }}
-          🔧 <b>Compiler:</b> Google Clang r547379
-          ⏰ <b>Started:</b> ${{ steps.build_info.outputs.build_start }}"
-
-      - name: Build Kernel
-        id: build_kernel
-        run: |
-          export PATH=$(pwd)/google-clang/bin/:$PATH
-
-          mkdir -p out
-
-          echo "Starting kernel build..."
-
-          BUILD_START=$(date +%s)
-
-          make $KERNEL_CMDLINE $KERNEL_DEFCONFIG CC="ccache clang"
-          make -j$(nproc --all) $KERNEL_CMDLINE CC="ccache clang"
-
-          BUILD_END=$(date +%s)
-
-          BUILD_TIME=$((BUILD_END - BUILD_START))
-          BUILD_TIME_MIN=$((BUILD_TIME / 60))
-          BUILD_TIME_SEC=$((BUILD_TIME % 60))
-
-          echo "build_time=${BUILD_TIME_MIN}m ${BUILD_TIME_SEC}s" >> $GITHUB_OUTPUT
-          echo "status=success" >> $GITHUB_OUTPUT
-
-      - name: Pack AnyKernel3 ZIP
-        if: success()
-        id: pack_anykernel3
-        run: |
-          git clone --depth=1 https://github.com/Vynxid/AnyKernel3.git AnyKernel3
-          cd AnyKernel3
-
-          cp ../out/arch/arm64/boot/Image.gz .
-
-          cp ../out/arch/arm64/boot/dtbo.img . 2>/dev/null || echo "No dtbo.img"
-
-          ZIP_NAME="Taoyao-${{ steps.build_info.outputs.commit_sha }}.zip"
-
-          zip -r9 "../${ZIP_NAME}" ./*
-
-          cd ..
-
-          echo "zip_name=${ZIP_NAME}" >> $GITHUB_OUTPUT
-
-      - name: Upload Artifacts
+      - name: Upload Raw Outputs
         if: success()
         uses: actions/upload-artifact@v4
         with:
-          name: Kernel-Taoyao
+          name: Raw_Kernel-${{ steps.get_time.outputs.TIME }}
           path: |
             out/arch/arm64/boot/Image
             out/arch/arm64/boot/dtbo.img
-            ${{ steps.pack_anykernel3.outputs.zip_name }}
