@@ -1,0 +1,35 @@
+name: Add ReSukiSU Submodule
+
+on:
+  workflow_dispatch:
+
+jobs:
+  add-resukisu:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Git
+        run: |
+          git config --global user.name "github-actions"
+          git config --global user.email "github-actions@github.com"
+
+      - name: Remove old folder if exists
+        run: |
+          rm -rf KernelSU-Next
+          rm -rf .git/modules/KernelSU-Next
+
+      - name: Add ReSukiSU Submodule
+        run: |
+          git submodule add https://github.com/ReSukiSU/ReSukiSU ReSukiSU
+
+      - name: Commit changes
+        run: |
+          git add .gitmodules ReSukiSu
+          git commit -m "Add ReSukiSU submodule"
+          git push
