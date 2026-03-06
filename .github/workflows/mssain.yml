@@ -1,39 +1,35 @@
-name: Apply SUSFS Patch 5.4
+name: Cherry-pick SUSFS Commit
 
 on:
   workflow_dispatch:
 
 jobs:
-  susfs-patch:
+  cherry-pick:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout Kernel
+      - name: Checkout kernel
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Setup Git
+      - name: Setup git
         run: |
           git config --global user.name "github-actions"
           git config --global user.email "actions@github.com"
 
-      - name: Install patch tool
+      - name: Add source repo
         run: |
-          sudo apt update
-          sudo apt install -y patch
+          git remote add susfs https://github.com/Siarrrrrrrr/VEUX-Positron-Resukisu-Susfs.git
+          git fetch susfs
 
-      - name: Download SUSFS Patch
+      - name: Cherry-pick commit
         run: |
-          wget https://raw.githubusercontent.com/JackA1ltman/NonGKI_Kernel_Build_2nd/mainline/Patches/Patch/susfs_patch_to_5.4.patch
+          git cherry-pick 069ab8de1e4c6485c13fea3eafe2351ba98ce65d || true
 
-      - name: Apply Patch
-        run: |
-          patch -p1 < susfs_patch_to_5.4.patch
-
-      - name: Commit Changes
+      - name: Commit result
         run: |
           git add .
-          git commit -m "Apply SUSFS patch for kernel 5.4"
+          git commit -m "Cherry-pick SUSFS integration commit" || echo "Nothing to commit"
           git push
