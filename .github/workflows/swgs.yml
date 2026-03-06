@@ -45,16 +45,12 @@ jobs:
           libssl-dev ca-certificates xz-utils mkbootimg cpio device-tree-compiler \
           git git-lfs curl wget jq gzip -y
 
-      - name: Download GreenForce Clang
+      - name: Download Google Clang
         run: |
-          wget -q https://github.com/greenforce-project/greenforce_clang/releases/download/20251012/gf-clang-22.0.0git-20251012.tar.gz
-          mkdir -p greenforce-clang
-          tar -xzf gf-clang-22.0.0git-20251012.tar.gz -C greenforce-clang
-          rm gf-clang-22.0.0git-20251012.tar.gz
-
-      - name: Setup SukiSU + SUSFS
-        run: |
-          curl -LSs "https://raw.githubusercontent.com/SukiSU-Ultra/SukiSU-Ultra/main/kernel/setup.sh" | bash -s susfs-main
+          wget -q https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/refs/heads/main/clang-r547379.tar.gz
+          mkdir -p google-clang
+          tar -xzf clang-r547379.tar.gz -C google-clang
+          rm clang-r547379.tar.gz
 
       - name: Get Build Information
         id: build_info
@@ -62,7 +58,7 @@ jobs:
           KERNEL_VERSION=$(make kernelversion 2>/dev/null || echo "Unknown")
           echo "kernel_version=${KERNEL_VERSION}" >> $GITHUB_OUTPUT
 
-          export PATH=$(pwd)/greenforce-clang/bin/:$PATH
+          export PATH=$(pwd)/google-clang/bin/:$PATH
           CLANG_VERSION=$(clang --version | head -n1)
           echo "clang_version=${CLANG_VERSION}" >> $GITHUB_OUTPUT
 
@@ -88,13 +84,13 @@ jobs:
           📝 <b>Commit:</b> <code>${{ steps.build_info.outputs.commit_sha }}</code>
 
           🐧 <b>Linux:</b> ${{ steps.build_info.outputs.kernel_version }}
-          🔧 <b>Compiler:</b> GreenForce Clang 22.0.0
+          🔧 <b>Compiler:</b> Google Clang r547379
           ⏰ <b>Started:</b> ${{ steps.build_info.outputs.build_start }}"
 
       - name: Build Kernel
         id: build_kernel
         run: |
-          export PATH=$(pwd)/greenforce-clang/bin/:$PATH
+          export PATH=$(pwd)/google-clang/bin/:$PATH
 
           mkdir -p out
 
