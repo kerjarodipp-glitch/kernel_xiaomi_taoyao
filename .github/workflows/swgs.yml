@@ -42,28 +42,11 @@ jobs:
             aria2 binutils make python3 libssl-dev build-essential \
             bc bison flex unzip ca-certificates xz-utils \
             mkbootimg cpio device-tree-compiler git git-lfs curl wget
-
-          # python2 (dibutuhkan rule dtbo.img). Kalau paketnya tidak ada,
-          # buat symlink python2 -> python3
-          sudo apt-get install -y python2 || true
-          if ! command -v python2 >/dev/null 2>&1; then
-            echo "python2 package not available, creating symlink python2 -> python3"
-            sudo ln -sf /usr/bin/python3 /usr/bin/python2
-          fi
-
+            
           # Toolchain (crDroid clang-r547379)
           git clone --depth=1 \
             https://gitlab.com/crdroidandroid/android_prebuilts_clang_host_linux-x86_clang-r547379.git \
             google-clang
-
-            curl -LSs "https://raw.githubusercontent.com/kylieeXD/SukiSU-Ultra/refs/heads/main/kernel/setup.sh" | bash -s tmp-builtin
-         
-          # Ganti mkdtboimg.py dengan versi Python3 dari AOSP (fix error str/bytes)
-          MKDTBO_PATH="scripts/dtc/libfdt/mkdtboimg.py"
-          echo ">>> Replacing mkdtboimg.py with Python3 version from AOSP"
-          curl -L "https://android.googlesource.com/platform/system/libufdt/+/refs/heads/main/utils/src/mkdtboimg.py?format=TEXT" \
-            | base64 --decode > "$MKDTBO_PATH"
-          chmod +x "$MKDTBO_PATH"
 
       - name: GetTime
         id: get_time
