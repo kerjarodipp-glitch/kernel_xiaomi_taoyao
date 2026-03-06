@@ -30,6 +30,6 @@ jobs:
 
       - name: Commit changes
         run: |
-          git add .gitmodules ReSukiSu
+          git add .gitmodules ReSukiSU
           git commit -m "Add ReSukiSU submodule"
           git push
